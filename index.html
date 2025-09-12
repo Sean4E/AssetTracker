@@ -168,6 +168,46 @@
             100% { opacity: 1; }
         }
 
+        /* GPS Test Button */
+        .gps-test {
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .gps-test-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .gps-test-btn:hover {
+            background: #138496;
+        }
+
+        .gps-result {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .gps-result.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .gps-result.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
         /* Location Prompt */
         .location-prompt {
             background: #fff3cd;
@@ -211,6 +251,50 @@
 
         .retry-location:hover {
             background: #138496;
+        }
+
+        /* Editable Dropdown */
+        .editable-dropdown {
+            position: relative;
+            width: 100%;
+        }
+
+        .dropdown-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .dropdown-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .dropdown-option {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .dropdown-option:hover {
+            background: #f5f5f5;
+        }
+
+        .dropdown-option.add-new {
+            background: #e3f2fd;
+            color: #1976d2;
+            font-weight: bold;
         }
 
         /* Navigation */
@@ -486,6 +570,12 @@
             <button onclick="showAdminLogin()" class="admin-btn">Admin Login</button>
         </div>
 
+        <!-- GPS Test Section -->
+        <div class="gps-test">
+            <button class="gps-test-btn" onclick="testGPSOnLogin()">Test GPS</button>
+            <div id="gps-test-result" class="gps-result hidden"></div>
+        </div>
+
         <div id="user-login" class="hidden">
             <h3>User Login</h3>
             <div class="form-group">
@@ -571,7 +661,10 @@
             </div>
             <div class="form-group">
                 <label>Type/Category *:</label>
-                <input type="text" id="new-item-type" placeholder="e.g., Power Tool, Hand Tool">
+                <div class="editable-dropdown">
+                    <input type="text" id="new-item-type" class="dropdown-input" placeholder="Select or type new category">
+                    <div id="type-dropdown" class="dropdown-options hidden"></div>
+                </div>
             </div>
             <div class="form-group">
                 <label>Brand *:</label>
@@ -614,6 +707,18 @@
         let scanning = false;
         let currentScannedItem = null;
 
+        // Default item types
+        const defaultItemTypes = [
+            'Power Tool',
+            'Hand Tool',
+            'Measuring Tool', 
+            'Safety Equipment',
+            'Hardware',
+            'Electronic Tool',
+            'Garden Tool',
+            'Automotive Tool'
+        ];
+
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             console.log('App initializing...');
@@ -624,6 +729,9 @@
             
             // Check GPS support
             checkGPSSupport();
+            
+            // Initialize item type dropdown
+            initializeItemTypeDropdown();
             
             // Wait for Firebase initialization or use localStorage
             if (window.isFirebaseReady) {
@@ -654,6 +762,142 @@
                 initializeLocalData();
             }
         };
+
+        // GPS Test on Login
+        function testGPSOnLogin() {
+            const resultDiv = document.getElementById('gps-test-result');
+            const testBtn = document.querySelector('.gps-test-btn');
+            
+            testBtn.disabled = true;
+            testBtn.textContent = 'Testing...';
+            resultDiv.classList.remove('hidden');
+            resultDiv.className = 'gps-result';
+            resultDiv.textContent = 'Checking GPS availability...';
+            
+            if (!navigator.geolocation) {
+                resultDiv.className = 'gps-result error';
+                resultDiv.textContent = '❌ GPS not supported on this device';
+                testBtn.disabled = false;
+                testBtn.textContent = 'Test GPS';
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    resultDiv.className = 'gps-result success';
+                    resultDiv.innerHTML = `✅ GPS working! Accuracy: ${Math.round(position.coords.accuracy)}m`;
+                    updateGPSStatus('available');
+                    testBtn.disabled = false;
+                    testBtn.textContent = 'Test GPS';
+                },
+                function(error) {
+                    resultDiv.className = 'gps-result error';
+                    
+                    if (error.code === 1) {
+                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                        const isAndroid = /Android/.test(navigator.userAgent);
+                        
+                        let settingsInstructions = '';
+                        if (isIOS) {
+                            settingsInstructions = 'Settings → Privacy & Security → Location Services → Safari → "While Using App"';
+                        } else if (isAndroid) {
+                            settingsInstructions = 'Settings → Apps → Chrome → Permissions → Location';
+                        } else {
+                            settingsInstructions = 'Browser settings → Privacy → Location permissions';
+                        }
+                        
+                        resultDiv.innerHTML = `❌ Location disabled<br><small>Enable in: ${settingsInstructions}</small>`;
+                        updateGPSStatus('denied');
+                    } else if (error.code === 2) {
+                        resultDiv.textContent = '❌ GPS signal unavailable';
+                        updateGPSStatus('unavailable');
+                    } else {
+                        resultDiv.textContent = '❌ GPS request timed out';
+                        updateGPSStatus('unavailable');
+                    }
+                    
+                    testBtn.disabled = false;
+                    testBtn.textContent = 'Test GPS';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        // Initialize item type dropdown
+        function initializeItemTypeDropdown() {
+            const input = document.getElementById('new-item-type');
+            const dropdown = document.getElementById('type-dropdown');
+            
+            // Load saved types from storage
+            const savedTypes = JSON.parse(localStorage.getItem('itemTypes') || JSON.stringify(defaultItemTypes));
+            
+            input.addEventListener('focus', () => showTypeDropdown(savedTypes));
+            input.addEventListener('input', () => filterTypeDropdown(savedTypes));
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.editable-dropdown')) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        function showTypeDropdown(types) {
+            const dropdown = document.getElementById('type-dropdown');
+            const input = document.getElementById('new-item-type');
+            
+            dropdown.innerHTML = '';
+            
+            // Show existing types
+            types.forEach(type => {
+                const option = document.createElement('div');
+                option.className = 'dropdown-option';
+                option.textContent = type;
+                option.onclick = () => selectType(type);
+                dropdown.appendChild(option);
+            });
+            
+            // Add "Create new" option if input has text that doesn't match existing
+            const inputValue = input.value.trim();
+            if (inputValue && !types.includes(inputValue)) {
+                const addOption = document.createElement('div');
+                addOption.className = 'dropdown-option add-new';
+                addOption.textContent = `+ Add "${inputValue}"`;
+                addOption.onclick = () => addNewType(inputValue);
+                dropdown.appendChild(addOption);
+            }
+            
+            dropdown.classList.remove('hidden');
+        }
+
+        function filterTypeDropdown(types) {
+            const input = document.getElementById('new-item-type');
+            const query = input.value.toLowerCase();
+            
+            const filteredTypes = types.filter(type => 
+                type.toLowerCase().includes(query)
+            );
+            
+            showTypeDropdown(filteredTypes);
+        }
+
+        function selectType(type) {
+            document.getElementById('new-item-type').value = type;
+            document.getElementById('type-dropdown').classList.add('hidden');
+        }
+
+        function addNewType(newType) {
+            const savedTypes = JSON.parse(localStorage.getItem('itemTypes') || JSON.stringify(defaultItemTypes));
+            if (!savedTypes.includes(newType)) {
+                savedTypes.push(newType);
+                localStorage.setItem('itemTypes', JSON.stringify(savedTypes));
+            }
+            selectType(newType);
+        }
 
         // Update GPS status indicator
         function updateGPSStatus(status, message = '') {
@@ -731,59 +975,62 @@
             return gpsText && (gpsText.textContent === 'GPS Denied' || gpsText.textContent === 'GPS Unsupported');
         }
 
-        // Show location enable prompt
+        // Show location enable prompt with simplified temporary enable flow
         function showLocationPrompt(retryCallback) {
             const actionDiv = document.getElementById('item-action');
             
             // Detect device type for specific instructions
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
             const isAndroid = /Android/.test(navigator.userAgent);
-            const isMobile = isIOS || isAndroid;
             
             let instructions = '';
             if (isIOS) {
                 instructions = `
                     <div class="location-instructions">
-                        <strong>📱 iPhone/iPad Instructions:</strong><br>
-                        1. Go to Settings → Privacy & Security → Location Services<br>
-                        2. Turn ON "Location Services"<br>
-                        3. Scroll down to Safari → Select "While Using App"<br>
-                        4. Return to this app and try again
+                        <strong>📱 Quick iPhone Setup:</strong><br>
+                        1. Tap "Try Again" below (will request permission)<br>
+                        2. When prompted, tap "Allow While Using App"<br>
+                        3. Complete your check-in/out<br>
+                        4. You can disable location afterward in Settings if desired
                     </div>
                 `;
             } else if (isAndroid) {
                 instructions = `
                     <div class="location-instructions">
-                        <strong>📱 Android Instructions:</strong><br>
-                        1. Go to Settings → Apps → Chrome (or your browser)<br>
-                        2. Tap Permissions → Location<br>
-                        3. Select "Allow only while using app"<br>
-                        4. Return to this app and try again
+                        <strong>📱 Quick Android Setup:</strong><br>
+                        1. Tap "Try Again" below (will request permission)<br>
+                        2. When prompted, tap "Allow only while using app"<br>
+                        3. Complete your check-in/out<br>
+                        4. You can disable location afterward in Settings if desired
                     </div>
                 `;
             } else {
                 instructions = `
                     <div class="location-instructions">
-                        <strong>💻 Desktop Instructions:</strong><br>
-                        1. Look for a location icon in your browser's address bar<br>
-                        2. Click it and select "Allow"<br>
-                        3. Or go to browser Settings → Privacy → Location<br>
-                        4. Allow location access for this site
+                        <strong>💻 Quick Desktop Setup:</strong><br>
+                        1. Click "Try Again" below<br>
+                        2. Look for location prompt in address bar and click "Allow"<br>
+                        3. Complete your check-in/out<br>
+                        4. You can disable location for this site afterward
                     </div>
                 `;
             }
             
             const html = `
                 <div class="location-prompt">
-                    <h4>📍 Location Access Needed</h4>
-                    <p>This app needs location access to track where items are checked in and out.</p>
+                    <h4>📍 Location Needed for This Check-In/Out</h4>
+                    <p>We need your location just for this transaction to track where the item was checked in/out. You can disable location again afterward if you prefer.</p>
                     
                     ${instructions}
                     
                     <div>
-                        <button class="retry-location" onclick="retryLocation()">🔄 Try Again</button>
-                        <button class="retry-location" onclick="skipLocation()" style="background: #6c757d;">Skip Location</button>
+                        <button class="retry-location" onclick="requestLocationPermission()">🔄 Enable Location Temporarily</button>
+                        <button class="retry-location" onclick="proceedWithoutLocation()" style="background: #6c757d;">Proceed Without Location</button>
                     </div>
+                    
+                    <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                        💡 Tip: Location helps track tool movement and prevents loss
+                    </p>
                 </div>
             `;
             
@@ -794,30 +1041,75 @@
             window.currentRetryCallback = retryCallback;
         }
 
-        // Retry location after user enables it
-        function retryLocation() {
-            checkGPSSupport(); // Recheck GPS status
+        // Request location permission directly
+        function requestLocationPermission() {
+            showNotification('Requesting location permission...', 'info');
             
-            setTimeout(() => {
-                if (window.currentRetryCallback) {
-                    window.currentRetryCallback();
-                    window.currentRetryCallback = null;
+            // Try to trigger location permission by requesting location
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    // Success - permission granted
+                    updateGPSStatus('available');
+                    showNotification('Location enabled! Continuing with check-in/out...', 'success');
+                    
+                    // Continue with the original action
+                    setTimeout(() => {
+                        if (window.currentRetryCallback) {
+                            window.currentRetryCallback();
+                            window.currentRetryCallback = null;
+                        }
+                    }, 1000);
+                },
+                function(error) {
+                    // Permission denied or other error
+                    if (error.code === 1) {
+                        updateGPSStatus('denied');
+                        showNotification('Location permission denied. You can still proceed without location.', 'error');
+                    } else {
+                        updateGPSStatus('unavailable');
+                        showNotification('Location unavailable. Proceeding without location.', 'error');
+                    }
+                    
+                    // Offer to proceed without location
+                    setTimeout(() => {
+                        const actionDiv = document.getElementById('item-action');
+                        const proceedButton = document.createElement('button');
+                        proceedButton.className = 'retry-location';
+                        proceedButton.style.background = '#28a745';
+                        proceedButton.textContent = '✓ Proceed Without Location';
+                        proceedButton.onclick = proceedWithoutLocation;
+                        
+                        const buttonContainer = actionDiv.querySelector('.location-prompt > div');
+                        if (buttonContainer) {
+                            buttonContainer.innerHTML = '';
+                            buttonContainer.appendChild(proceedButton);
+                        }
+                    }, 2000);
+                },
+                {
+                    enableHighAccuracy: false,
+                    timeout: 10000,
+                    maximumAge: 0
                 }
-            }, 500);
+            );
         }
 
-        // Skip location and proceed without GPS
-        function skipLocation() {
+        // Proceed without location
+        function proceedWithoutLocation() {
             if (window.currentRetryCallback) {
-                // Modify the callback to skip GPS
+                showNotification('Proceeding without location tracking...', 'info');
+                
+                // Override the GPS requirement for this transaction
+                window.skipGPSForThisTransaction = true;
+                
                 const originalCallback = window.currentRetryCallback;
                 window.currentRetryCallback = null;
                 
-                // Get the current scanned item and proceed without GPS
-                if (currentScannedItem) {
-                    showNotification('Proceeding without location tracking...', 'info');
+                setTimeout(() => {
                     originalCallback();
-                }
+                    // Reset the skip flag after transaction
+                    window.skipGPSForThisTransaction = false;
+                }, 500);
             }
         }
 
@@ -897,6 +1189,12 @@
             if (!localStorage.getItem('itemStatus')) {
                 localStorage.setItem('itemStatus', JSON.stringify({}));
                 console.log('Item status initialized');
+            }
+
+            // Initialize item types
+            if (!localStorage.getItem('itemTypes')) {
+                localStorage.setItem('itemTypes', JSON.stringify(defaultItemTypes));
+                console.log('Item types initialized');
             }
         }
 
@@ -1236,6 +1534,7 @@
             }
             currentUser = null;
             currentRole = null;
+            currentScannedItem = null;
             document.getElementById('user-pin').value = '';
             document.getElementById('admin-pin').value = '';
             showLogin();
@@ -1379,6 +1678,15 @@
                     checkedOutBy: null, 
                     checkedOutAt: null 
                 });
+                
+                // Save new type to dropdown if it's new
+                if (type) {
+                    const savedTypes = JSON.parse(localStorage.getItem('itemTypes') || JSON.stringify(defaultItemTypes));
+                    if (!savedTypes.includes(type)) {
+                        savedTypes.push(type);
+                        localStorage.setItem('itemTypes', JSON.stringify(savedTypes));
+                    }
+                }
                 
                 // Clear form
                 document.getElementById('new-item-name').value = '';
