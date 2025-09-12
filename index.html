@@ -1652,10 +1652,16 @@
         }
 
         async function checkOutItem(itemId) {
-            // Check GPS status first
-            if (isGPSBlocked()) {
+            // Ensure this was accessed via QR scan
+            if (!currentScannedItem || currentScannedItem !== itemId) {
+                showNotification('Please scan the QR code first to check out this item.', 'error');
+                startScanning();
+                return;
+            }
+            
+            // Check GPS status first (unless user chose to skip for this transaction)
+            if (!window.skipGPSForThisTransaction && isGPSBlocked()) {
                 showLocationPrompt(() => {
-                    // Retry after user enables location
                     checkOutItem(itemId);
                 });
                 return;
@@ -1685,6 +1691,10 @@
                     
                     showNotification(locationMsg, 'success');
                     showItemAction(itemId, items[itemId]);
+                    
+                    // Clear the scanned item to require fresh scan for next transaction
+                    currentScannedItem = null;
+                    
                     console.log('Item checked out:', itemId, 'by', currentUser.name, 'Location:', location);
                 } catch (error) {
                     console.error('Error checking out item:', error);
@@ -1694,10 +1704,16 @@
         }
 
         async function checkInItem(itemId) {
-            // Check GPS status first
-            if (isGPSBlocked()) {
+            // Ensure this was accessed via QR scan
+            if (!currentScannedItem || currentScannedItem !== itemId) {
+                showNotification('Please scan the QR code first to check in this item.', 'error');
+                startScanning();
+                return;
+            }
+            
+            // Check GPS status first (unless user chose to skip for this transaction)
+            if (!window.skipGPSForThisTransaction && isGPSBlocked()) {
                 showLocationPrompt(() => {
-                    // Retry after user enables location
                     checkInItem(itemId);
                 });
                 return;
@@ -1727,6 +1743,10 @@
                     
                     showNotification(locationMsg, 'success');
                     showItemAction(itemId, items[itemId]);
+                    
+                    // Clear the scanned item to require fresh scan for next transaction
+                    currentScannedItem = null;
+                    
                     console.log('Item checked in:', itemId, 'by', currentUser.name, 'Location:', location);
                 } catch (error) {
                     console.error('Error checking in item:', error);
