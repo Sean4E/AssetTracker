@@ -12,7 +12,7 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
-        // Your Firebase config will go here
+        // Your Firebase config
         const firebaseConfig = {
 		  apiKey: "AIzaSyDnwDzHtjFKaWY-VwIMJtomfunkp7t9GFc",
 		  authDomain: "assettracker1-5b976.firebaseapp.com",
@@ -110,19 +110,25 @@
             display: none !important;
         }
 
-        /* Connection Status Indicator */
+        /* Connection Status Indicators */
         .connection-status {
             position: absolute;
             top: 15px;
             right: 15px;
             display: flex;
-            align-items: center;
-            gap: 8px;
+            flex-direction: column;
+            gap: 5px;
             background: rgba(255, 255, 255, 0.2);
             padding: 8px 12px;
             border-radius: 20px;
             font-size: 12px;
             color: white;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .status-dot {
@@ -140,10 +146,71 @@
             background: #f44336;
         }
 
+        .status-dot.gps-available {
+            background: #4CAF50;
+        }
+
+        .status-dot.gps-unavailable {
+            background: #f44336;
+        }
+
+        .status-dot.gps-loading {
+            background: #FF9800;
+        }
+
+        .status-dot.gps-unknown {
+            background: #9E9E9E;
+        }
+
         @keyframes pulse {
             0% { opacity: 1; }
             50% { opacity: 0.6; }
             100% { opacity: 1; }
+        }
+
+        /* Location Prompt */
+        .location-prompt {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .location-prompt h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .location-prompt p {
+            color: #856404;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .location-instructions {
+            text-align: left;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 5px;
+            font-size: 13px;
+        }
+
+        .retry-location {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+
+        .retry-location:hover {
+            background: #138496;
         }
 
         /* Navigation */
@@ -386,8 +453,14 @@
         <h1>🔧 Tool Management System</h1>
         <p id="user-info">Please sign in</p>
         <div class="connection-status">
-            <div id="status-dot" class="status-dot disconnected"></div>
-            <span id="status-text">Connecting...</span>
+            <div class="status-indicator">
+                <div id="status-dot" class="status-dot disconnected"></div>
+                <span id="status-text">Connecting...</span>
+            </div>
+            <div class="status-indicator">
+                <div id="gps-dot" class="status-dot gps-unknown"></div>
+                <span id="gps-text">GPS Unknown</span>
+            </div>
         </div>
     </div>
 
@@ -549,6 +622,9 @@
                 window.updateConnectionStatus(false, 'Connecting...');
             }
             
+            // Check GPS support
+            checkGPSSupport();
+            
             // Wait for Firebase initialization or use localStorage
             if (window.isFirebaseReady) {
                 initializeAppData();
@@ -578,6 +654,172 @@
                 initializeLocalData();
             }
         };
+
+        // Update GPS status indicator
+        function updateGPSStatus(status, message = '') {
+            const dot = document.getElementById('gps-dot');
+            const text = document.getElementById('gps-text');
+            
+            if (dot && text) {
+                switch (status) {
+                    case 'available':
+                        dot.className = 'status-dot gps-available';
+                        text.textContent = message || 'GPS Available';
+                        break;
+                    case 'unavailable':
+                        dot.className = 'status-dot gps-unavailable';
+                        text.textContent = message || 'GPS Unavailable';
+                        break;
+                    case 'loading':
+                        dot.className = 'status-dot gps-loading';
+                        text.textContent = message || 'Getting GPS...';
+                        break;
+                    case 'denied':
+                        dot.className = 'status-dot gps-unavailable';
+                        text.textContent = 'GPS Denied';
+                        break;
+                    case 'unsupported':
+                        dot.className = 'status-dot gps-unknown';
+                        text.textContent = 'GPS Unsupported';
+                        break;
+                    default:
+                        dot.className = 'status-dot gps-unknown';
+                        text.textContent = 'GPS Unknown';
+                }
+            }
+        }
+
+        // Check GPS support and permissions on app load
+        function checkGPSSupport() {
+            if (!navigator.geolocation) {
+                updateGPSStatus('unsupported');
+                return;
+            }
+
+            // Check permissions if supported
+            if (navigator.permissions) {
+                navigator.permissions.query({name: 'geolocation'}).then(function(permission) {
+                    switch (permission.state) {
+                        case 'granted':
+                            updateGPSStatus('available');
+                            break;
+                        case 'denied':
+                            updateGPSStatus('denied');
+                            break;
+                        case 'prompt':
+                            updateGPSStatus('available', 'GPS Ready');
+                            break;
+                    }
+                    
+                    // Listen for permission changes
+                    permission.addEventListener('change', function() {
+                        checkGPSSupport();
+                    });
+                }).catch(function() {
+                    // Permissions API not supported, assume available if geolocation exists
+                    updateGPSStatus('available', 'GPS Ready');
+                });
+            } else {
+                // Older browser, assume available if geolocation exists
+                updateGPSStatus('available', 'GPS Ready');
+            }
+        }
+
+        // Check if GPS is blocked/denied
+        function isGPSBlocked() {
+            const gpsText = document.getElementById('gps-text');
+            return gpsText && (gpsText.textContent === 'GPS Denied' || gpsText.textContent === 'GPS Unsupported');
+        }
+
+        // Show location enable prompt
+        function showLocationPrompt(retryCallback) {
+            const actionDiv = document.getElementById('item-action');
+            
+            // Detect device type for specific instructions
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isAndroid = /Android/.test(navigator.userAgent);
+            const isMobile = isIOS || isAndroid;
+            
+            let instructions = '';
+            if (isIOS) {
+                instructions = `
+                    <div class="location-instructions">
+                        <strong>📱 iPhone/iPad Instructions:</strong><br>
+                        1. Go to Settings → Privacy & Security → Location Services<br>
+                        2. Turn ON "Location Services"<br>
+                        3. Scroll down to Safari → Select "While Using App"<br>
+                        4. Return to this app and try again
+                    </div>
+                `;
+            } else if (isAndroid) {
+                instructions = `
+                    <div class="location-instructions">
+                        <strong>📱 Android Instructions:</strong><br>
+                        1. Go to Settings → Apps → Chrome (or your browser)<br>
+                        2. Tap Permissions → Location<br>
+                        3. Select "Allow only while using app"<br>
+                        4. Return to this app and try again
+                    </div>
+                `;
+            } else {
+                instructions = `
+                    <div class="location-instructions">
+                        <strong>💻 Desktop Instructions:</strong><br>
+                        1. Look for a location icon in your browser's address bar<br>
+                        2. Click it and select "Allow"<br>
+                        3. Or go to browser Settings → Privacy → Location<br>
+                        4. Allow location access for this site
+                    </div>
+                `;
+            }
+            
+            const html = `
+                <div class="location-prompt">
+                    <h4>📍 Location Access Needed</h4>
+                    <p>This app needs location access to track where items are checked in and out.</p>
+                    
+                    ${instructions}
+                    
+                    <div>
+                        <button class="retry-location" onclick="retryLocation()">🔄 Try Again</button>
+                        <button class="retry-location" onclick="skipLocation()" style="background: #6c757d;">Skip Location</button>
+                    </div>
+                </div>
+            `;
+            
+            actionDiv.innerHTML = html;
+            actionDiv.classList.remove('hidden');
+            
+            // Store retry callback globally
+            window.currentRetryCallback = retryCallback;
+        }
+
+        // Retry location after user enables it
+        function retryLocation() {
+            checkGPSSupport(); // Recheck GPS status
+            
+            setTimeout(() => {
+                if (window.currentRetryCallback) {
+                    window.currentRetryCallback();
+                    window.currentRetryCallback = null;
+                }
+            }, 500);
+        }
+
+        // Skip location and proceed without GPS
+        function skipLocation() {
+            if (window.currentRetryCallback) {
+                // Modify the callback to skip GPS
+                const originalCallback = window.currentRetryCallback;
+                window.currentRetryCallback = null;
+                
+                // Get the current scanned item and proceed without GPS
+                if (currentScannedItem) {
+                    showNotification('Proceeding without location tracking...', 'info');
+                    originalCallback();
+                }
+            }
+        }
 
         // Initialize Firebase data
         async function initializeFirebaseData() {
@@ -1410,6 +1652,15 @@
         }
 
         async function checkOutItem(itemId) {
+            // Check GPS status first
+            if (isGPSBlocked()) {
+                showLocationPrompt(() => {
+                    // Retry after user enables location
+                    checkOutItem(itemId);
+                });
+                return;
+            }
+            
             showNotification('Getting your location...', 'info');
             
             getCurrentLocation(async (location) => {
@@ -1428,9 +1679,13 @@
                     // Log activity
                     await logActivity('CHECK_OUT', itemId, items[itemId].name, location);
                     
-                    showNotification(`${items[itemId].name} checked out successfully!`, 'success');
+                    const locationMsg = location ? 
+                        `${items[itemId].name} checked out successfully! Location: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}` :
+                        `${items[itemId].name} checked out successfully! (No GPS location)`;
+                    
+                    showNotification(locationMsg, 'success');
                     showItemAction(itemId, items[itemId]);
-                    console.log('Item checked out:', itemId, 'by', currentUser.name);
+                    console.log('Item checked out:', itemId, 'by', currentUser.name, 'Location:', location);
                 } catch (error) {
                     console.error('Error checking out item:', error);
                     showNotification('Failed to check out item. Please try again.', 'error');
@@ -1439,6 +1694,15 @@
         }
 
         async function checkInItem(itemId) {
+            // Check GPS status first
+            if (isGPSBlocked()) {
+                showLocationPrompt(() => {
+                    // Retry after user enables location
+                    checkInItem(itemId);
+                });
+                return;
+            }
+            
             showNotification('Getting your location...', 'info');
             
             getCurrentLocation(async (location) => {
@@ -1457,9 +1721,13 @@
                     // Log activity
                     await logActivity('CHECK_IN', itemId, items[itemId].name, location);
                     
-                    showNotification(`${items[itemId].name} checked in successfully!`, 'success');
+                    const locationMsg = location ? 
+                        `${items[itemId].name} checked in successfully! Location: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}` :
+                        `${items[itemId].name} checked in successfully! (No GPS location)`;
+                    
+                    showNotification(locationMsg, 'success');
                     showItemAction(itemId, items[itemId]);
-                    console.log('Item checked in:', itemId, 'by', currentUser.name);
+                    console.log('Item checked in:', itemId, 'by', currentUser.name, 'Location:', location);
                 } catch (error) {
                     console.error('Error checking in item:', error);
                     showNotification('Failed to check in item. Please try again.', 'error');
@@ -1468,33 +1736,96 @@
         }
 
         function getCurrentLocation(callback) {
-            if (navigator.geolocation) {
+            // Check if geolocation is supported
+            if (!navigator.geolocation) {
+                console.log('Geolocation not supported');
+                updateGPSStatus('unsupported');
+                showNotification('GPS not supported on this device.', 'error');
+                callback(null);
+                return;
+            }
+
+            // Update status to loading
+            updateGPSStatus('loading');
+
+            // Check permissions first (if supported)
+            if (navigator.permissions) {
+                navigator.permissions.query({name: 'geolocation'}).then(function(permission) {
+                    console.log('Geolocation permission:', permission.state);
+                    if (permission.state === 'denied') {
+                        updateGPSStatus('denied');
+                        showNotification('Location permission denied. Please enable in browser settings.', 'error');
+                        callback(null);
+                        return;
+                    }
+                    requestLocation();
+                }).catch(function() {
+                    // Permissions API not supported, try anyway
+                    requestLocation();
+                });
+            } else {
+                // Older browser, try anyway
+                requestLocation();
+            }
+
+            function requestLocation() {
+                const startTime = Date.now();
+                console.log('Requesting location...');
+                
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
+                    function(position) {
+                        const endTime = Date.now();
+                        const timeTaken = endTime - startTime;
+                        
                         const location = {
                             latitude: position.coords.latitude,
                             longitude: position.coords.longitude,
                             accuracy: position.coords.accuracy,
-                            timestamp: new Date().toISOString()
+                            altitude: position.coords.altitude,
+                            timestamp: new Date().toISOString(),
+                            timeTaken: timeTaken
                         };
+                        
                         console.log('Location obtained:', location);
+                        console.log(`GPS accuracy: ${location.accuracy} meters, Time: ${timeTaken}ms`);
+                        
+                        // Update GPS status to available
+                        updateGPSStatus('available', `GPS: ${Math.round(location.accuracy)}m`);
+                        
                         callback(location);
                     },
-                    (error) => {
+                    function(error) {
+                        const endTime = Date.now();
+                        const timeTaken = endTime - startTime;
+                        
                         console.error('GPS error:', error);
-                        showNotification('GPS location unavailable. Proceeding without location.', 'error');
+                        console.log(`GPS failed after ${timeTaken}ms`);
+                        
+                        const errorMessages = {
+                            1: 'Location permission denied. Please enable location access.',
+                            2: 'Location unavailable. Check your connection and try again.',
+                            3: 'Location request timed out. Please try again.'
+                        };
+                        
+                        const userMessage = errorMessages[error.code] || 'Location unavailable.';
+                        
+                        // Update GPS status based on error type
+                        if (error.code === 1) {
+                            updateGPSStatus('denied');
+                        } else {
+                            updateGPSStatus('unavailable', 'GPS Failed');
+                        }
+                        
+                        showNotification(userMessage + ' Proceeding without GPS.', 'error');
+                        
                         callback(null);
                     },
                     {
                         enableHighAccuracy: true,
-                        timeout: 15000,
-                        maximumAge: 60000
+                        timeout: 20000,           // Increased timeout for slower connections
+                        maximumAge: 300000        // Allow 5-minute cached location
                     }
                 );
-            } else {
-                console.log('Geolocation not supported');
-                showNotification('GPS not supported on this device.', 'error');
-                callback(null);
             }
         }
 
