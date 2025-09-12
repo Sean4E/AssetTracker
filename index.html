@@ -14,14 +14,13 @@
         
         // Your Firebase config will go here
         const firebaseConfig = {
-            // You'll need to replace these with your actual Firebase config
-            apiKey: "AIzaSyDnwDzHtjFKaWY-VwIMJtomfunkp7t9GFc",
-			authDomain: "assettracker1-5b976.firebaseapp.com",
-			projectId: "assettracker1-5b976",
-			storageBucket: "assettracker1-5b976.firebasestorage.app",
-			messagingSenderId: "260186083597",
-			appId: "1:260186083597:web:5ec0eb9d5f8a4132022044"
-        };
+		  apiKey: "AIzaSyDnwDzHtjFKaWY-VwIMJtomfunkp7t9GFc",
+		  authDomain: "assettracker1-5b976.firebaseapp.com",
+		  projectId: "assettracker1-5b976",
+		  storageBucket: "assettracker1-5b976.firebasestorage.app",
+		  messagingSenderId: "260186083597",
+		  appId: "1:260186083597:web:5ec0eb9d5f8a4132022044"
+		};
 
         // Initialize Firebase
         let app, db;
@@ -32,6 +31,9 @@
             db = getFirestore(app);
             isFirebaseReady = true;
             console.log('Firebase initialized successfully');
+            
+            // Update connection status
+            updateConnectionStatus(true);
             
             // Make Firebase available globally
             window.db = db;
@@ -44,9 +46,31 @@
             }
         } catch (error) {
             console.error('Firebase initialization failed:', error);
+            updateConnectionStatus(false, error.message);
             window.showNotification('Firebase connection failed. Using local storage.', 'error');
             window.isFirebaseReady = false;
         }
+
+        // Update connection status indicator
+        function updateConnectionStatus(connected, message = '') {
+            setTimeout(() => {
+                const dot = document.getElementById('status-dot');
+                const text = document.getElementById('status-text');
+                
+                if (dot && text) {
+                    if (connected) {
+                        dot.className = 'status-dot connected';
+                        text.textContent = 'Firebase Connected';
+                    } else {
+                        dot.className = 'status-dot disconnected';
+                        text.textContent = message || 'Local Storage';
+                    }
+                }
+            }, 100);
+        }
+
+        // Make updateConnectionStatus available globally
+        window.updateConnectionStatus = updateConnectionStatus;
     </script>
     
     <style>
@@ -71,6 +95,7 @@
             border-radius: 10px;
             text-align: center;
             margin-bottom: 20px;
+            position: relative;
         }
 
         .section {
@@ -83,6 +108,42 @@
 
         .hidden {
             display: none !important;
+        }
+
+        /* Connection Status Indicator */
+        .connection-status {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: white;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #4CAF50;
+        }
+
+        .status-dot.disconnected {
+            background: #f44336;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
         }
 
         /* Navigation */
@@ -281,26 +342,12 @@
             background: #2196F3;
         }
 
-        .firebase-status {
-            background: #e3f2fd;
-            border: 1px solid #2196F3;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-
         .firebase-config {
             background: #fff3cd;
             border: 1px solid #ffc107;
             padding: 15px;
             border-radius: 5px;
             margin-bottom: 20px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
         }
 
         @media (max-width: 480px) {
@@ -325,6 +372,12 @@
             .pin-input {
                 letter-spacing: 5px;
             }
+
+            .connection-status {
+                position: static;
+                margin: 10px auto 0;
+                width: fit-content;
+            }
         }
     </style>
 </head>
@@ -332,6 +385,10 @@
     <div class="header">
         <h1>🔧 Tool Management System</h1>
         <p id="user-info">Please sign in</p>
+        <div class="connection-status">
+            <div id="status-dot" class="status-dot disconnected"></div>
+            <span id="status-text">Connecting...</span>
+        </div>
     </div>
 
     <!-- Firebase Configuration Notice -->
@@ -487,6 +544,11 @@
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             console.log('App initializing...');
+            // Set initial status
+            if (window.updateConnectionStatus) {
+                window.updateConnectionStatus(false, 'Connecting...');
+            }
+            
             // Wait for Firebase initialization or use localStorage
             if (window.isFirebaseReady) {
                 initializeAppData();
@@ -504,27 +566,18 @@
             if (window.isFirebaseReady) {
                 console.log('Using Firebase for data storage');
                 document.getElementById('firebase-config-notice').style.display = 'none';
+                if (window.updateConnectionStatus) {
+                    window.updateConnectionStatus(true);
+                }
                 initializeFirebaseData();
             } else {
                 console.log('Using localStorage for data storage');
-                updateConnectionStatus(false, 'Using local storage');
+                if (window.updateConnectionStatus) {
+                    window.updateConnectionStatus(false, 'Local Storage');
+                }
                 initializeLocalData();
             }
         };
-
-        // Update connection status indicator
-        function updateConnectionStatus(connected, message = '') {
-            const dot = document.getElementById('status-dot');
-            const text = document.getElementById('status-text');
-            
-            if (connected) {
-                dot.className = 'status-dot connected';
-                text.textContent = 'Firebase Connected';
-            } else {
-                dot.className = 'status-dot disconnected';
-                text.textContent = message || 'Local Storage';
-            }
-        }
 
         // Initialize Firebase data
         async function initializeFirebaseData() {
@@ -559,6 +612,9 @@
             } catch (error) {
                 console.error('Error initializing Firebase data:', error);
                 showNotification('Firebase initialization failed. Using local storage.', 'error');
+                if (window.updateConnectionStatus) {
+                    window.updateConnectionStatus(false, 'Firebase Error');
+                }
                 initializeLocalData();
             }
         }
