@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Management System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 10px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: #2196F3;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Navigation */
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+
+        button.admin-btn {
+            background: #FF9800;
+        }
+
+        button.danger-btn {
+            background: #f44336;
+        }
+
+        button.secondary-btn {
+            background: #6c757d;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .pin-input {
+            font-size: 24px;
+            text-align: center;
+            letter-spacing: 10px;
+            max-width: 200px;
+            margin: 0 auto;
+        }
+
+        /* Video scanner */
+        #video {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .controls {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .status.success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #f5f5f5;
+        }
+
+        .item-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        .item-status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .status-available {
+            background: #4CAF50;
+        }
+
+        .status-checked-out {
+            background: #ff9800;
+        }
+
+        .qr-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 2px dashed #ddd;
+        }
+
+        .qr-canvas {
+            margin: 10px auto;
+            display: block;
+            border: 1px solid #ddd;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            z-index: 9999;
+            max-width: 300px;
+        }
+
+        .notification.success {
+            background: #4CAF50;
+        }
+
+        .notification.error {
+            background: #f44336;
+        }
+
+        .notification.info {
+            background: #2196F3;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            button {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .pin-input {
+                letter-spacing: 5px;
+            }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔧 Tool Management System</h1>
+        <p id="user-info">Please sign in</p>
+    </div>
+
+    <!-- Login Section -->
+    <div id="login-section" class="section">
+        <h2>🔐 Sign In</h2>
+        <div class="nav-buttons">
+            <button onclick="showUserLogin()">User Login</button>
+            <button onclick="showAdminLogin()" class="admin-btn">Admin Login</button>
+        </div>
+
+        <div id="user-login" class="hidden">
+            <h3>User Login</h3>
+            <div class="form-group">
+                <label>Enter your 6-digit PIN:</label>
+                <input type="password" id="user-pin" class="pin-input" maxlength="6" placeholder="000000">
+            </div>
+            <button onclick="loginUser()">Sign In</button>
+            <p style="margin-top: 15px; font-size: 14px; color: #666;">
+                Demo PINs: 123456 (John Smith), 234567 (Jane Doe), 345678 (Bob Johnson)
+            </p>
+        </div>
+
+        <div id="admin-login" class="hidden">
+            <h3>Admin Login</h3>
+            <div class="form-group">
+                <label>Admin PIN:</label>
+                <input type="password" id="admin-pin" class="pin-input" maxlength="6" placeholder="000000">
+            </div>
+            <button onclick="loginAdmin()" class="admin-btn">Admin Sign In</button>
+            <p style="margin-top: 15px; font-size: 14px; color: #666;">
+                Admin PIN: 999999
+            </p>
+        </div>
+    </div>
+
+    <!-- User Section -->
+    <div id="user-section" class="section hidden">
+        <div class="nav-buttons">
+            <button onclick="startScanning()">📱 Scan QR Code</button>
+            <button onclick="logout()" class="secondary-btn">Sign Out</button>
+        </div>
+
+        <div id="scanner-area" class="hidden">
+            <h3>QR Scanner</h3>
+            <video id="video" class="hidden"></video>
+            <div class="controls">
+                <button id="start-scanner-btn" onclick="startScanner()">Start Camera</button>
+                <button id="stop-scanner-btn" onclick="stopScanner()" class="danger-btn hidden">Stop Camera</button>
+            </div>
+            <div id="scanner-status" class="status">Ready to scan</div>
+        </div>
+
+        <div id="item-action" class="hidden">
+            <!-- Item details and action buttons will be populated here -->
+        </div>
+    </div>
+
+    <!-- Admin Section -->
+    <div id="admin-section" class="section hidden">
+        <div class="nav-buttons">
+            <button onclick="showUserManagement()">👥 Manage Users</button>
+            <button onclick="showItemManagement()">📦 Manage Items</button>
+            <button onclick="showActivityLogs()">📋 Activity Logs</button>
+            <button onclick="logout()" class="secondary-btn">Sign Out</button>
+        </div>
+
+        <!-- User Management -->
+        <div id="user-management" class="hidden">
+            <h3>User Management</h3>
+            <div class="form-group">
+                <h4>Add New User</h4>
+                <label>User Name:</label>
+                <input type="text" id="new-user-name" placeholder="Enter user name">
+            </div>
+            <div class="form-group">
+                <label>6-Digit PIN:</label>
+                <input type="text" id="new-user-pin" placeholder="123456" maxlength="6" pattern="[0-9]{6}">
+            </div>
+            <button onclick="addUser()">Add User</button>
+
+            <div id="users-list">
+                <!-- Users will be populated here -->
+            </div>
+        </div>
+
+        <!-- Item Management -->
+        <div id="item-management" class="hidden">
+            <h3>Item Management</h3>
+            <div class="form-group">
+                <h4>Add New Item</h4>
+                <label>Item Name *:</label>
+                <input type="text" id="new-item-name" placeholder="Enter item name">
+            </div>
+            <div class="form-group">
+                <label>Type/Category *:</label>
+                <input type="text" id="new-item-type" placeholder="e.g., Power Tool, Hand Tool">
+            </div>
+            <div class="form-group">
+                <label>Brand *:</label>
+                <input type="text" id="new-item-brand" placeholder="Enter brand">
+            </div>
+            <div class="form-group">
+                <label>Model Number *:</label>
+                <input type="text" id="new-item-model" placeholder="Enter model number">
+            </div>
+            <div class="form-group">
+                <label>Serial Number:</label>
+                <input type="text" id="new-item-serial" placeholder="Enter serial number (optional)">
+            </div>
+            <div class="form-group">
+                <label>Description:</label>
+                <textarea id="new-item-description" placeholder="Additional details..." rows="3"></textarea>
+            </div>
+            <button onclick="addItem()">Add Item & Generate QR</button>
+
+            <div id="items-list">
+                <!-- Items will be populated here -->
+            </div>
+        </div>
+
+        <!-- Activity Logs -->
+        <div id="activity-logs" class="hidden">
+            <h3>Activity Logs</h3>
+            <div id="logs-list">
+                <!-- Activity logs will be populated here -->
+            </div>
+            <button onclick="clearLogs()" class="danger-btn">Clear All Logs</button>
+        </div>
+    </div>
+
+    <script>
+        // Application State
+        let currentUser = null;
+        let currentRole = null; // 'user' or 'admin'
+        let qrScanner = null;
+        let scanning = false;
+        let currentScannedItem = null;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('App initializing...');
+            initializeData();
+            showLogin();
+        });
+
+        // Initialize default data
+        function initializeData() {
+            console.log('Initializing data...');
+            
+            // Initialize users if not exist
+            if (!localStorage.getItem('users')) {
+                const defaultUsers = {
+                    '123456': { name: 'John Smith', pin: '123456' },
+                    '234567': { name: 'Jane Doe', pin: '234567' },
+                    '345678': { name: 'Bob Johnson', pin: '345678' }
+                };
+                localStorage.setItem('users', JSON.stringify(defaultUsers));
+                console.log('Default users created');
+            }
+
+            // Initialize admin PIN if not exist
+            if (!localStorage.getItem('adminPin')) {
+                localStorage.setItem('adminPin', '999999');
+                console.log('Admin PIN set');
+            }
+
+            // Initialize items if not exist
+            if (!localStorage.getItem('items')) {
+                const defaultItems = {};
+                localStorage.setItem('items', JSON.stringify(defaultItems));
+                console.log('Items storage initialized');
+            }
+
+            // Initialize activity logs
+            if (!localStorage.getItem('activityLogs')) {
+                localStorage.setItem('activityLogs', JSON.stringify([]));
+                console.log('Activity logs initialized');
+            }
+
+            // Initialize item status
+            if (!localStorage.getItem('itemStatus')) {
+                localStorage.setItem('itemStatus', JSON.stringify({}));
+                console.log('Item status initialized');
+            }
+        }
+
+        // Navigation functions
+        function showLogin() {
+            hideAllSections();
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('user-info').textContent = 'Please sign in';
+        }
+
+        function showUserLogin() {
+            document.getElementById('admin-login').classList.add('hidden');
+            document.getElementById('user-login').classList.remove('hidden');
+            document.getElementById('user-pin').focus();
+        }
+
+        function showAdminLogin() {
+            document.getElementById('user-login').classList.add('hidden');
+            document.getElementById('admin-login').classList.remove('hidden');
+            document.getElementById('admin-pin').focus();
+        }
+
+        function hideAllSections() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('user-section').classList.add('hidden');
+            document.getElementById('admin-section').classList.add('hidden');
+            
+            // Hide admin subsections
+            document.getElementById('user-management').classList.add('hidden');
+            document.getElementById('item-management').classList.add('hidden');
+            document.getElementById('activity-logs').classList.add('hidden');
+            
+            // Hide user subsections
+            document.getElementById('scanner-area').classList.add('hidden');
+            document.getElementById('item-action').classList.add('hidden');
+        }
+
+        // Login functions
+        function loginUser() {
+            const pin = document.getElementById('user-pin').value.trim();
+            
+            if (pin.length !== 6) {
+                showNotification('Please enter a 6-digit PIN', 'error');
+                return;
+            }
+            
+            const users = JSON.parse(localStorage.getItem('users'));
+            
+            if (users[pin]) {
+                currentUser = users[pin];
+                currentRole = 'user';
+                document.getElementById('user-info').textContent = `Welcome, ${currentUser.name}!`;
+                hideAllSections();
+                document.getElementById('user-section').classList.remove('hidden');
+                showNotification(`Welcome back, ${currentUser.name}!`, 'success');
+                console.log('User logged in:', currentUser.name);
+            } else {
+                showNotification('Invalid PIN. Please try again.', 'error');
+                document.getElementById('user-pin').value = '';
+            }
+        }
+
+        function loginAdmin() {
+            const pin = document.getElementById('admin-pin').value.trim();
+            const adminPin = localStorage.getItem('adminPin');
+            
+            if (pin === adminPin) {
+                currentRole = 'admin';
+                currentUser = { name: 'Administrator' };
+                document.getElementById('user-info').textContent = 'Administrator Mode';
+                hideAllSections();
+                document.getElementById('admin-section').classList.remove('hidden');
+                showUserManagement(); // Show user management by default
+                showNotification('Admin login successful!', 'success');
+                console.log('Admin logged in');
+            } else {
+                showNotification('Invalid admin PIN. Please try again.', 'error');
+                document.getElementById('admin-pin').value = '';
+            }
+        }
+
+        function logout() {
+            if (qrScanner) {
+                stopScanner();
+            }
+            currentUser = null;
+            currentRole = null;
+            document.getElementById('user-pin').value = '';
+            document.getElementById('admin-pin').value = '';
+            showLogin();
+            showNotification('Successfully signed out', 'info');
+            console.log('User logged out');
+        }
+
+        // Admin functions
+        function showUserManagement() {
+            document.getElementById('item-management').classList.add('hidden');
+            document.getElementById('activity-logs').classList.add('hidden');
+            document.getElementById('user-management').classList.remove('hidden');
+            displayUsers();
+        }
+
+        function showItemManagement() {
+            document.getElementById('user-management').classList.add('hidden');
+            document.getElementById('activity-logs').classList.add('hidden');
+            document.getElementById('item-management').classList.remove('hidden');
+            displayItems();
+        }
+
+        function showActivityLogs() {
+            document.getElementById('user-management').classList.add('hidden');
+            document.getElementById('item-management').classList.add('hidden');
+            document.getElementById('activity-logs').classList.remove('hidden');
+            displayActivityLogs();
+        }
+
+        function addUser() {
+            const name = document.getElementById('new-user-name').value.trim();
+            const pin = document.getElementById('new-user-pin').value.trim();
+            
+            if (!name) {
+                showNotification('Please enter a user name.', 'error');
+                return;
+            }
+            
+            if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+                showNotification('Please enter a valid 6-digit PIN (numbers only).', 'error');
+                return;
+            }
+            
+            const users = JSON.parse(localStorage.getItem('users'));
+            
+            if (users[pin]) {
+                showNotification('PIN already exists. Please choose a different PIN.', 'error');
+                return;
+            }
+            
+            users[pin] = { name, pin };
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            document.getElementById('new-user-name').value = '';
+            document.getElementById('new-user-pin').value = '';
+            
+            displayUsers();
+            showNotification(`User "${name}" added successfully!`, 'success');
+            console.log('User added:', name, pin);
+        }
+
+        function displayUsers() {
+            const users = JSON.parse(localStorage.getItem('users'));
+            const usersList = document.getElementById('users-list');
+            
+            let html = '<h4>Current Users</h4><table><tr><th>Name</th><th>PIN</th><th>Actions</th></tr>';
+            
+            for (const [pin, user] of Object.entries(users)) {
+                html += `
+                    <tr>
+                        <td>${user.name}</td>
+                        <td>${pin}</td>
+                        <td><button onclick="deleteUser('${pin}')" class="danger-btn">Delete</button></td>
+                    </tr>
+                `;
+            }
+            
+            html += '</table>';
+            usersList.innerHTML = html;
+        }
+
+        function deleteUser(pin) {
+            if (confirm('Are you sure you want to delete this user?')) {
+                const users = JSON.parse(localStorage.getItem('users'));
+                const userName = users[pin].name;
+                delete users[pin];
+                localStorage.setItem('users', JSON.stringify(users));
+                displayUsers();
+                showNotification(`User "${userName}" deleted successfully!`, 'success');
+                console.log('User deleted:', pin);
+            }
+        }
+
+        function addItem() {
+            const name = document.getElementById('new-item-name').value.trim();
+            const type = document.getElementById('new-item-type').value.trim();
+            const brand = document.getElementById('new-item-brand').value.trim();
+            const model = document.getElementById('new-item-model').value.trim();
+            const serial = document.getElementById('new-item-serial').value.trim();
+            const description = document.getElementById('new-item-description').value.trim();
+            
+            if (!name || !type || !brand || !model) {
+                showNotification('Please fill in all required fields (marked with *).', 'error');
+                return;
+            }
+            
+            // Generate unique item ID
+            const itemId = 'ITEM' + Date.now().toString().slice(-6);
+            
+            const item = {
+                id: itemId,
+                name,
+                type,
+                brand,
+                model,
+                serial,
+                description,
+                dateAdded: new Date().toISOString()
+            };
+            
+            const items = JSON.parse(localStorage.getItem('items'));
+            items[itemId] = item;
+            localStorage.setItem('items', JSON.stringify(items));
+            
+            // Initialize item as available
+            const itemStatus = JSON.parse(localStorage.getItem('itemStatus'));
+            itemStatus[itemId] = { status: 'available', checkedOutBy: null, checkedOutAt: null };
+            localStorage.setItem('itemStatus', JSON.stringify(itemStatus));
+            
+            // Clear form
+            document.getElementById('new-item-name').value = '';
+            document.getElementById('new-item-type').value = '';
+            document.getElementById('new-item-brand').value = '';
+            document.getElementById('new-item-model').value = '';
+            document.getElementById('new-item-serial').value = '';
+            document.getElementById('new-item-description').value = '';
+            
+            showNotification(`Item "${name}" added successfully!`, 'success');
+            console.log('Item added:', itemId, name);
+            
+            // Refresh the display
+            displayItems();
+        }
+
+        function displayItems() {
+            const items = JSON.parse(localStorage.getItem('items'));
+            const itemStatus = JSON.parse(localStorage.getItem('itemStatus'));
+            const itemsList = document.getElementById('items-list');
+            
+            if (Object.keys(items).length === 0) {
+                itemsList.innerHTML = '<h4>No Items Yet</h4><p>Add your first item above to get started!</p>';
+                return;
+            }
+            
+            let html = '<h4>Current Items</h4>';
+            
+            for (const [itemId, item] of Object.entries(items)) {
+                const status = itemStatus[itemId] || { status: 'available' };
+                const statusClass = status.status === 'available' ? 'status-available' : 'status-checked-out';
+                const statusText = status.status === 'available' ? 'Available' : `Checked out by ${status.checkedOutBy}`;
+                
+                html += `
+                    <div class="item-card">
+                        <h4>${item.name}</h4>
+                        <p><strong>ID:</strong> ${itemId}</p>
+                        <p><strong>Type:</strong> ${item.type}</p>
+                        <p><strong>Brand:</strong> ${item.brand} - ${item.model}</p>
+                        ${item.serial ? `<p><strong>Serial:</strong> ${item.serial}</p>` : ''}
+                        ${item.description ? `<p><strong>Description:</strong> ${item.description}</p>` : ''}
+                        <p><span class="item-status ${statusClass}">${statusText}</span></p>
+                        
+                        <div class="qr-container">
+                            <p><strong>QR Code:</strong></p>
+                            <canvas id="qr-${itemId}" class="qr-canvas" width="150" height="150"></canvas>
+                            <p style="font-family: monospace; margin-top: 10px;">${itemId}</p>
+                        </div>
+                        
+                        <button onclick="deleteItem('${itemId}')" class="danger-btn">Delete Item</button>
+                    </div>
+                `;
+            }
+            
+            itemsList.innerHTML = html;
+            
+            // Generate QR codes after DOM is ready
+            setTimeout(() => {
+                for (const itemId of Object.keys(items)) {
+                    generateQRCode(itemId);
+                }
+            }, 100);
+        }
+
+        function generateQRCode(itemId) {
+            try {
+                const canvas = document.getElementById(`qr-${itemId}`);
+                if (!canvas) {
+                    console.error('Canvas not found for item:', itemId);
+                    return;
+                }
+                
+                // Clear canvas first
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Generate QR code
+                const qr = new QRious({
+                    element: canvas,
+                    value: itemId,
+                    size: 150,
+                    backgroundAlpha: 1,
+                    background: '#ffffff',
+                    foreground: '#000000',
+                    level: 'M'
+                });
+                
+                console.log('QR code generated for:', itemId);
+            } catch (error) {
+                console.error('Error generating QR code for', itemId, ':', error);
+                
+                // Fallback: show text if QR generation fails
+                const canvas = document.getElementById(`qr-${itemId}`);
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#f0f0f0';
+                    ctx.fillRect(0, 0, 150, 150);
+                    ctx.fillStyle = '#333';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('QR Code', 75, 70);
+                    ctx.fillText('Error', 75, 90);
+                }
+            }
+        }
+
+        function deleteItem(itemId) {
+            const items = JSON.parse(localStorage.getItem('items'));
+            const itemName = items[itemId].name;
+            
+            if (confirm(`Are you sure you want to delete "${itemName}"?`)) {
+                const itemStatus = JSON.parse(localStorage.getItem('itemStatus'));
+                
+                delete items[itemId];
+                delete itemStatus[itemId];
+                
+                localStorage.setItem('items', JSON.stringify(items));
+                localStorage.setItem('itemStatus', JSON.stringify(itemStatus));
+                
+                displayItems();
+                showNotification(`Item "${itemName}" deleted successfully!`, 'success');
+                console.log('Item deleted:', itemId);
+            }
+        }
+
+        // User scanner functions
+        function startScanning() {
+            document.getElementById('scanner-area').classList.remove('hidden');
+            document.getElementById('item-action').classList.add('hidden');
+        }
+
+        async function startScanner() {
+            try {
+                const video = document.getElementById('video');
+                video.classList.remove('hidden');
+                
+                // Request camera permission
+                await navigator.mediaDevices.getUserMedia({ video: true });
+                
+                qrScanner = new QrScanner(video, result => handleScanResult(result), {
+                    returnDetailedScanResult: true,
+                    highlightScanRegion: true,
+                    highlightCodeOutline: true,
+                });
+
+                await qrScanner.start();
+                scanning = true;
+                
+                document.getElementById('start-scanner-btn').classList.add('hidden');
+                document.getElementById('stop-scanner-btn').classList.remove('hidden');
+                document.getElementById('scanner-status').innerHTML = '<div class="status info">Scanning for QR codes... Point camera at a QR code.</div>';
+                
+                console.log('Scanner started');
+                
+            } catch (error) {
+                console.error('Scanner error:', error);
+                let errorMessage = 'Scanner failed to start. ';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage += 'Please allow camera access and try again.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage += 'No camera found on this device.';
+                } else {
+                    errorMessage += 'Please check camera permissions.';
+                }
+                
+                document.getElementById('scanner-status').innerHTML = `<div class="status error">${errorMessage}</div>`;
+                showNotification(errorMessage, 'error');
+            }
+        }
+
+        function stopScanner() {
+            if (qrScanner) {
+                qrScanner.stop();
+                qrScanner.destroy();
+                qrScanner = null;
+                console.log('Scanner stopped');
+            }
+            
+            scanning = false;
+            document.getElementById('video').classList.add('hidden');
+            document.getElementById('start-scanner-btn').classList.remove('hidden');
+            document.getElementById('stop-scanner-btn').classList.add('hidden');
+            document.getElementById('scanner-status').innerHTML = '<div class="status">Scanner stopped. Click Start Camera to scan again.</div>';
+        }
+
+        function handleScanResult(result) {
+            const scannedData = result.data.trim();
+            console.log('QR code scanned:', scannedData);
+            
+            const items = JSON.parse(localStorage.getItem('items'));
+            const item = items[scannedData];
+            
+            if (item) {
+                currentScannedItem = scannedData;
+                stopScanner();
+                showItemAction(scannedData, item);
+                showNotification(`Found item: ${item.name}`, 'success');
+            } else {
+                document.getElementById('scanner-status').innerHTML = '<div class="status error">Unknown QR code. Item not found in database.</div>';
+                showNotification('Unknown QR code. Item not in database.', 'error');
+                console.log('Unknown QR code:', scannedData);
+            }
+        }
+
+        function showItemAction(itemId, item) {
+            const itemStatus = JSON.parse(localStorage.getItem('itemStatus'));
+            const status = itemStatus[itemId] || { status: 'available' };
+            
+            document.getElementById('scanner-area').classList.add('hidden');
+            const actionDiv = document.getElementById('item-action');
+            
+            let html = `
+                <div class="item-card">
+                    <h3>${item.name}</h3>
+                    <p><strong>ID:</strong> ${itemId}</p>
+                    <p><strong>Type:</strong> ${item.type}</p>
+                    <p><strong>Brand:</strong> ${item.brand} - ${item.model}</p>
+                    ${item.serial ? `<p><strong>Serial:</strong> ${item.serial}</p>` : ''}
+                    ${item.description ? `<p><strong>Description:</strong> ${item.description}</p>` : ''}
+            `;
+            
+            if (status.status === 'available') {
+                html += `
+                    <p><span class="item-status status-available">Available for checkout</span></p>
+                    <div class="action-buttons">
+                        <button onclick="checkOutItem('${itemId}')">📤 Check Out This Item</button>
+                        <button onclick="startScanning()" class="secondary-btn">Scan Another Item</button>
+                    </div>
+                `;
+            } else if (status.checkedOutBy === currentUser.name) {
+                html += `
+                    <p><span class="item-status status-checked-out">Checked out by you</span></p>
+                    <p><strong>Checked out:</strong> ${new Date(status.checkedOutAt).toLocaleString()}</p>
+                    <div class="action-buttons">
+                        <button onclick="checkInItem('${itemId}')">📥 Check In This Item</button>
+                        <button onclick="startScanning()" class="secondary-btn">Scan Another Item</button>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <p><span class="item-status status-checked-out">Checked out by ${status.checkedOutBy}</span></p>
+                    <p><strong>Checked out:</strong> ${new Date(status.checkedOutAt).toLocaleString()}</p>
+                    <p style="color: #f44336;">This item is currently unavailable.</p>
+                    <div class="action-buttons">
+                        <button onclick="startScanning()" class="secondary-btn">Scan Another Item</button>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            actionDiv.innerHTML = html;
+            actionDiv.classList.remove('hidden');
+        }
+
+        function checkOutItem(itemId) {
+            showNotification('Getting your location...', 'info');
+            
+            getCurrentLocation((location) => {
+                const itemStatus = JSON.parse(localStorage.getItem('itemStatus'));
+                const items = JSON.parse(localStorage.getItem('items'));
+                
+                itemStatus[itemId] = {
+                    status: 'checked-out',
+                    checkedOutBy: currentUser.name,
+                    checkedOutAt: new Date().toISOString(),
+                    location: location
+                };
+                
+                localStorage.setItem('itemStatus', JSON.stringify(itemStatus));
+                
+                // Log activity
+                logActivity('CHECK_OUT', itemId, items[itemId].name, location);
+                
+                showNotification(`${items[itemId].name} checked out successfully!`, 'success');
+                showItemAction(itemId, items[itemId]);
+                console.log('Item checked out:', itemId, 'by', currentUser.name);
+            });
+        }
+
+        function checkInItem(itemId) {
+            showNotification('Getting your location...', 'info');
+            
+            getCurrentLocation((location) => {
+                const itemStatus = JSON.parse(localStorage.getItem('itemStatus'));
+                const items = JSON.parse(localStorage.getItem('items'));
+                
+                itemStatus[itemId] = {
+                    status: 'available',
+                    checkedOutBy: null,
+                    checkedOutAt: null,
+                    location: null
+                };
+                
+                localStorage.setItem('itemStatus', JSON.stringify(itemStatus));
+                
+                // Log activity
+                logActivity('CHECK_IN', itemId, items[itemId].name, location);
+                
+                showNotification(`${items[itemId].name} checked in successfully!`, 'success');
+                showItemAction(itemId, items[itemId]);
+                console.log('Item checked in:', itemId, 'by', currentUser.name);
+            });
+        }
+
+        function getCurrentLocation(callback) {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const location = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            timestamp: new Date().toISOString()
+                        };
+                        console.log('Location obtained:', location);
+                        callback(location);
+                    },
+                    (error) => {
+                        console.error('GPS error:', error);
+                        showNotification('GPS location unavailable. Proceeding without location.', 'error');
+                        callback(null);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 60000
+                    }
+                );
+            } else {
+                console.log('Geolocation not supported');
+                showNotification('GPS not supported on this device.', 'error');
+                callback(null);
+            }
+        }
+
+        function logActivity(action, itemId, itemName, location) {
+            const logs = JSON.parse(localStorage.getItem('activityLogs'));
+            const logEntry = {
+                timestamp: new Date().toISOString(),
+                action: action,
+                itemId: itemId,
+                itemName: itemName,
+                user: currentUser.name,
+                location: location
+            };
+            
+            logs.unshift(logEntry);
+            
+            // Keep only last 100 entries
+            if (logs.length > 100) {
+                logs.splice(100);
+            }
+            
+            localStorage.setItem('activityLogs', JSON.stringify(logs));
+            console.log('Activity logged:', action, itemId, currentUser.name);
+        }
+
+        function displayActivityLogs() {
+            const logs = JSON.parse(localStorage.getItem('activityLogs'));
+            const logsList = document.getElementById('logs-list');
+            
+            if (logs.length === 0) {
+                logsList.innerHTML = '<p>No activity logs yet. Items will appear here when users check them in/out.</p>';
+                return;
+            }
+            
+            let html = '<h4>Recent Activity</h4><table><tr><th>Time</th><th>Action</th><th>Item</th><th>User</th><th>Location</th></tr>';
+            
+            logs.forEach(log => {
+                const locationText = log.location ? 
+                    `${log.location.latitude.toFixed(6)}, ${log.location.longitude.toFixed(6)}` : 
+                    'Not available';
+                
+                const actionIcon = log.action === 'CHECK_OUT' ? '📤' : '📥';
+                const actionText = log.action === 'CHECK_OUT' ? 'Check Out' : 'Check In';
+                
+                html += `
+                    <tr>
+                        <td>${new Date(log.timestamp).toLocaleString()}</td>
+                        <td>${actionIcon} ${actionText}</td>
+                        <td>${log.itemName}<br><small>${log.itemId}</small></td>
+                        <td>${log.user}</td>
+                        <td>${locationText}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</table>';
+            logsList.innerHTML = html;
+        }
+
+        function clearLogs() {
+            if (confirm('Are you sure you want to clear all activity logs? This cannot be undone.')) {
+                localStorage.setItem('activityLogs', JSON.stringify([]));
+                displayActivityLogs();
+                showNotification('Activity logs cleared!', 'success');
+                console.log('Activity logs cleared');
+            }
+        }
+
+        function showNotification(message, type) {
+            // Remove existing notifications
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(notification => notification.remove());
+            
+            // Create new notification
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
+            
+            console.log(`Notification [${type}]:`, message);
+        }
+
+        // Handle Enter key for PIN inputs
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (e.target.id === 'user-pin') {
+                    loginUser();
+                } else if (e.target.id === 'admin-pin') {
+                    loginAdmin();
+                }
+            }
+        });
+
+        // Handle page unload
+        window.addEventListener('beforeunload', function() {
+            if (qrScanner) {
+                qrScanner.stop();
+                qrScanner.destroy();
+            }
+        });
+
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && qrScanner) {
+                console.log('Page hidden, stopping scanner');
+                stopScanner();
+            }
+        });
+    </script>
+</body>
+</html>
