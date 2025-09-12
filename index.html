@@ -14,13 +14,14 @@
         
         // Your Firebase config will go here
         const firebaseConfig = {
-		  apiKey: "AIzaSyDnwDzHtjFKaWY-VwIMJtomfunkp7t9GFc",
-		  authDomain: "assettracker1-5b976.firebaseapp.com",
-		  projectId: "assettracker1-5b976",
-		  storageBucket: "assettracker1-5b976.firebasestorage.app",
-		  messagingSenderId: "260186083597",
-		  appId: "1:260186083597:web:5ec0eb9d5f8a4132022044"
-		};
+            // You'll need to replace these with your actual Firebase config
+            apiKey: "AIzaSyDnwDzHtjFKaWY-VwIMJtomfunkp7t9GFc",
+			authDomain: "assettracker1-5b976.firebaseapp.com",
+			projectId: "assettracker1-5b976",
+			storageBucket: "assettracker1-5b976.firebasestorage.app",
+			messagingSenderId: "260186083597",
+			appId: "1:260186083597:web:5ec0eb9d5f8a4132022044"
+        };
 
         // Initialize Firebase
         let app, db;
@@ -506,9 +507,24 @@
                 initializeFirebaseData();
             } else {
                 console.log('Using localStorage for data storage');
+                updateConnectionStatus(false, 'Using local storage');
                 initializeLocalData();
             }
         };
+
+        // Update connection status indicator
+        function updateConnectionStatus(connected, message = '') {
+            const dot = document.getElementById('status-dot');
+            const text = document.getElementById('status-text');
+            
+            if (connected) {
+                dot.className = 'status-dot connected';
+                text.textContent = 'Firebase Connected';
+            } else {
+                dot.className = 'status-dot disconnected';
+                text.textContent = message || 'Local Storage';
+            }
+        }
 
         // Initialize Firebase data
         async function initializeFirebaseData() {
